@@ -1,0 +1,88 @@
+---
+title: "SemiMech Flu Forecasting"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this vignette we are going to demonstrate how to use the semi-mechanistic model to forecast influenza hospitalizations. The model models seasons hierarchically, with a unique set of parameters for each season tied together through a prior distribution.
+
+This model uses the fundamental semi-mech equation to model hospitalizations at time $t$ in season $s$ as,  
+
+$$h(t,s) = \theta(s) e^{f(t,s) - \phi(s) g(t,s)}$$
+$$g(t,s) = \int_0^t e^{f(t',s)dt'}$$
+$$ f(t,s) = spline(t,s)$$
+
+
+
+For more details please see ....
+
+
+## Application to influenza hospitalization forecasting
+
+First, we will download the data we need for forecasting influenza hospitalizations
+
+
+```{r}
+library(stringr)
+setwd("../")
+source('R/get_hhs.R')
+
+
+hhs <- get_hhs()
+```
+
+Let's plot Texas (TX) as our example state.
+
+
+```{r}
+library(ggplot2)
+ggplot(hhs[hhs$state == "TX",],aes(x=date,y=total_patients_hospitalized_confirmed_influenza))+ geom_line()
+```
+
+So we see we have roughly one seasons worth of data, from 2021-10-01 through 2022-05-01. As this model requires a past season and a current season, we will extract the full previous season to train on.
+
+```{r}
+season_past <- seq(as.Date("2021-10-01"),as.Date("2022-05-02"),by="day")
+season_past_hosp <- hhs[hhs$state == "TX" & hhs$date %in% season_past,]$total_patients_hospitalized_confirmed_influenza
+plot(season_past_hosp,type='l')
+
+```
+
+
+Now pretend we were sitting at 2022-08-01 and the current season started 2022-07-01. In reality the season would start in October, but we aren't there yet. Let's grab the current data.
+
+
+```{r}
+forecast_date <-"2022-08-01"
+season_current <- seq(as.Date("2022-07-01"),as.Date(forecast_date),by="day")
+season_current_hosp <- hhs[hhs$state == "TX" & hhs$date %in% season_current,]$total_patients_hospitalized_confirmed_influenza
+plot(season_current_hosp,type='l',ylim=c(0,120))
+```
+
+
+We are now ready to make a forecast! First we load up semi-mech and pass it the two time series we created. Semi-mech will by default return a 30 day ahead forecast (to match the submission format) in matrix form n_samples x 30 days. 
+
+```{r}
+source('semimech.R')
+
+forecast <- run_semi_mech(season_past_hosp = season_past_hosp,season_current_hosp =season_current_hosp )
+
+```
+
+
+Now we have a forecast object, lets make some plots. 
+
+
+```{r}
+forecast_dates <- seq(as.Date(forecast_date),as.Date(forecast_date)+29,by="day")
+forecast_df <- data.frame(date=forecast_dates,total_patients_hospitalized_confirmed_influenza=colMeans(forecast))
+
+
+ggplot(forecast_df,aes(x=date,y=total_patients_hospitalized_confirmed_influenza,col='forecast')) + geom_line() +
+  geom_line(data=hhs[hhs$state == "TX" & hhs$date <= as.Date(forecast_date) ,],aes(x=date,y=total_patients_hospitalized_confirmed_influenza,col='Observed'))
+```

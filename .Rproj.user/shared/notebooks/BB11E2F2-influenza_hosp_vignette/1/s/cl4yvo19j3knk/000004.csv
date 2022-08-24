@@ -1,0 +1,6 @@
+"0","ggplot(forecast_df,aes(x=date,y=total_patients_hospitalized_confirmed_influenza,col='forecast')) + geom_line() +
+  geom_line(data=hhs[hhs$state == ""TX"" & hhs$date <= as.Date(forecast_date) ,],aes(x=date,y=total_patients_hospitalized_confirmed_influenza,col='Observed'))
+"
+"2","Warning:"
+"2"," Removed 290 row(s) containing missing values (geom_path).
+"
