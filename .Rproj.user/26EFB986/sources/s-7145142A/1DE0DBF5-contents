@@ -1,0 +1,144 @@
+---
+title: "SemiMech Covid Forecasting"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Please see influenza vignette for description
+
+
+## Application to COVID-19 hospitalization forecasting
+
+First, we will download the data we need for forecasting influenza hospitalizations
+
+
+```{r}
+library(stringr)
+#setwd("../")
+source('R/get_hhs.R')
+
+
+hhs <- get_hhs()
+```
+
+Let's plot Texas (TX) as our example state.
+
+
+```{r}
+library(ggplot2)
+ggplot(hhs[hhs$state == "TX",],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid))+ geom_line()
+```
+
+Unlike influenza hospitalizations, COVID-19 does not have a set seasonality. To handle this we need to extract the "waves" that occur in COVID-19 data. To do this, we first smooth the time series and extract the derivative.
+
+```{r}
+
+tx_hosps <- hhs[hhs$state == "TX",]$total_adult_patients_hospitalized_confirmed_covid
+smoothed_deriv <- c(0,diff(lowess(tx_hosps/max(tx_hosps,na.rm=T),f=.1)$y))
+plot(tx_hosps/max(tx_hosps,na.rm=T),type='l',ylim=c(-1,1))
+lines(10*smoothed_deriv,type='l')
+abline(h=0,col='red')
+
+```
+
+
+As we can see from the plot, the points at which the derivative goes from negative to positive are good indicators of the beginning of a wave. Let's now extract the waves.
+
+```{r}
+wave_starts <- c()
+
+for (t in 2:length(smoothed_deriv)){
+  if (!is.na(smoothed_deriv[t-1]) & !is.na(smoothed_deriv[t])){
+    if (smoothed_deriv[t-1] < 0 & smoothed_deriv[t] >0){
+      wave_starts <-c(wave_starts,t)
+    }
+  }
+}
+
+print (wave_starts)
+```
+
+
+Lets add the wave starts to the plot we generated above.
+
+
+```{r}
+plot(tx_hosps/max(tx_hosps,na.rm=T),type='l',ylim=c(-1,1))
+lines(10*smoothed_deriv,type='l')
+abline(h=0,col='red')
+
+for (ws in wave_starts){
+  abline(v=ws,col='blue')
+}
+
+
+```
+We can see that the algorithm nicely identified two waves, except for the start of the wave, which we will handle later. 
+
+Let's first extract the existing waves and plot them hierarchically. 
+
+
+```{r}
+wave_matrix <-matrix(NA,nrow=length(wave_starts)-1,ncol=1000)
+
+for (wave_start in 2:length(wave_starts)){
+  to_replace <- tx_hosps[wave_starts[wave_start-1]:wave_starts[wave_start]]
+  while (length(to_replace) < 1000){
+    to_replace <- c(to_replace,NA)
+  }
+  wave_matrix[wave_start-1,] <- to_replace
+}
+
+
+NAindex <-function(z){ min(which(is.na(z)))}
+
+longest_wave_length <- max(apply(wave_matrix,1,NAindex))
+
+wave_matrix <- wave_matrix[,1:longest_wave_length]
+
+plot(0,xlim=c(0,longest_wave_length),ylim=c(0,20000))
+for (row in 1:nrow(wave_matrix)){
+  lines(wave_matrix[row,])
+}
+
+```
+
+These are the historical waves we can use for training. We also need the current wave to fit.
+
+```{r}
+
+current_wave <- tx_hosps[wave_starts[length(wave_starts)]:length(tx_hosps)]
+plot(0,xlim=c(0,200),ylim=c(0,20000))
+for (row in 1:nrow(wave_matrix)){
+  lines(wave_matrix[row,])
+}
+lines(current_wave,col='red')
+```
+
+
+
+```{r}
+source('R/semimech2.R')
+
+forecast <- run_semi_mech(season_past_matrix_hosp = wave_matrix,season_current_hosp =current_wave )
+plot(colMeans(forecast))
+```
+
+
+Now we have a forecast object, lets make some plots. 
+
+
+```{r}
+forecast_dates <- seq(as.Date(tail(hhs$date,1)),as.Date(tail(hhs$date,1))+29,by="day")
+forecast_df <- data.frame(date=forecast_dates,total_adult_patients_hospitalized_confirmed_covid=colMeans(forecast))
+
+
+ggplot(forecast_df,aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='forecast')) + geom_line() +
+  geom_line(data=hhs[hhs$state == "TX"  ,],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='Observed'))
+```

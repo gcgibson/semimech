@@ -1,27 +1,27 @@
 {
-    "id": "D765E1D5",
-    "path": "~/semimech/R/semimech.R",
-    "project_path": "R/semimech.R",
+    "id": "9140E5F2",
+    "path": "~/semimech/R/semimech2.R",
+    "project_path": "R/semimech2.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1661372721236.0,
+    "created": 1661459787701.0,
     "source_on_save": false,
-    "relative_order": 3,
+    "relative_order": 5,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "103,0",
-        "scrollLine": "0"
+        "cursorPosition": "104,2",
+        "scrollLine": "92"
     },
     "folds": "",
-    "lastKnownWriteTime": 1661374933,
+    "lastKnownWriteTime": 1661470303,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1661374933061,
+    "last_content_update": 1661470303364,
     "read_only": false,
     "read_only_alternatives": []
 }

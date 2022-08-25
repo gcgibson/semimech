@@ -1,0 +1,5 @@
+"0","ggplot(hhs[hhs$state == ""TX"",],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid))+ geom_line()
+"
+"2","Warning:"
+"2"," Removed 196 row(s) containing missing values (geom_path).
+"
