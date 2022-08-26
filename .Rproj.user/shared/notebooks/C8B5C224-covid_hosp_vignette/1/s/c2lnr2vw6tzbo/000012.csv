@@ -1,9 +1,0 @@
-"0","forecast_dates <- seq(as.Date(tail(hhs$date,1)),as.Date(tail(hhs$date,1))+29,by=""day"")"
-"0","forecast_df <- data.frame(date=forecast_dates,total_adult_patients_hospitalized_confirmed_covid=colMeans(forecast))"
-"0",""
-"0",""
-"0","ggplot(forecast_df,aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='forecast')) + geom_line() +"
-"0","  geom_line(data=hhs[hhs$state == ""TX""  ,],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='Observed'))"
-"2","Warning:"
-"2"," Removed 196 row(s) containing missing values (geom_path).
-"

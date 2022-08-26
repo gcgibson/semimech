@@ -37,13 +37,13 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
            season_previous_spline[i,j] <- exp(inprod(season_past_basis[i,], beta_w1[1:N_knots_season_past_basis,j]) - phi1*sum(season_previous_spline[1:(i-1),j]))
        }
      for (i in 1:N_knots_season_past_basis) {
-        beta_w1[i,j] ~ dnorm(beta[i], 1)
+        beta_w1[i,j] ~ dnorm(beta[i], .0001)
       }
     }
 
 
     for (i in 1:N_knots_season_current_basis) {
-        beta_w2[i] ~ dnorm(beta[i], 1)
+        beta_w2[i] ~ dnorm(beta[i], .0001)
       }
 
 
@@ -88,7 +88,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
                       basis_oos=season_current_basis_oos)
 
   # Choose the parameters to watch
-  model_parameters <- c("season_current_spline")
+  model_parameters <- c("season_current_spline","spline_forecast_current")
 
   # Run the model
   model_run <- jags(
@@ -101,5 +101,5 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
     n.thin = 2
   ) # Amo
 
-  return(model_run$BUGSoutput$sims.list$season_current_spline[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)])
+  return(model_run$BUGSoutput$sims.list$spline_forecast_current[,tail(1:dim(model_run$BUGSoutput$sims.list$spline_forecast_current)[2],30)])
 }

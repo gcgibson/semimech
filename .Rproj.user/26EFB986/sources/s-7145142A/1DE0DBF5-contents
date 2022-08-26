@@ -23,8 +23,9 @@ library(stringr)
 #setwd("../")
 source('R/get_hhs.R')
 
-
+forecast_date <- "2022-08-24"
 hhs <- get_hhs()
+hhs <- hhs[hhs$date < forecast_date,]
 ```
 
 Let's plot Texas (TX) as our example state.
@@ -127,7 +128,6 @@ lines(current_wave,col='red')
 source('R/semimech2.R')
 
 forecast <- run_semi_mech(season_past_matrix_hosp = wave_matrix,season_current_hosp =current_wave )
-plot(colMeans(forecast))
 ```
 
 
@@ -140,5 +140,5 @@ forecast_df <- data.frame(date=forecast_dates,total_adult_patients_hospitalized_
 
 
 ggplot(forecast_df,aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='forecast')) + geom_line() +
-  geom_line(data=hhs[hhs$state == "TX"  ,],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='Observed'))
+  geom_line(data=hhs[hhs$state == "TX" & hhs$date < forecast_date,],aes(x=date,y=total_adult_patients_hospitalized_confirmed_covid,col='Observed'))
 ```
