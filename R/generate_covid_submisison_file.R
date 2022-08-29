@@ -1,14 +1,13 @@
-
 library(tidyverse)
 library(cowplot)
 library(lubridate)
 library(mgcv)
 library(splines)
-
 library(MASS)
 library(dplyr)
 library(rstanarm)
-#options(mc.cores = parallel::detectCores())
+
+
 last_date <- as.Date("2022-08-28")
 # For better plotting
 mytext <- element_text(angle=90, hjust=0.5, vjust=0.5)
@@ -258,7 +257,7 @@ df_to_submit <- df_to_submit %>% left_join(fips,by="location")
 df_to_submit$location <- df_to_submit$fips
 df_to_submit <- df_to_submit %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
 df_to_submit[is.na(df_to_submit$location),]$location <- "US"
-write.csv(df_to_submit,file = paste0(last_date + 1,"-UT-Osiris.csv"),row.names = F)
+write.csv(df_to_submit,file = paste0("forecasts_processed/",last_date + 1,"-UT-Osiris.csv"),row.names = F)
 
 
 
