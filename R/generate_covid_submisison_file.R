@@ -34,8 +34,10 @@ hhs_sub <- hhs_sub %>% dplyr::select(state,date,covid)
 hhs_sub_us <- hhs_sub %>% dplyr::group_by(date) %>% dplyr::summarise(state="US",covid = sum(covid))
 hhs_sub <- rbind(hhs_sub,hhs_sub_us)
 
-
-
+### Set OR 2022-08-26 to 52
+hhs_sub[hhs_sub$state == "OR" & hhs_sub$date == "2022-08-24", ]$covid <- 38
+hhs_sub[hhs_sub$state == "OR" & hhs_sub$date == "2022-08-25", ]$covid <- 40
+hhs_sub[hhs_sub$state == "OR" & hhs_sub$date >= "2022-08-26", ]$covid <- 42
 
 forecast_days <- 31
 start_date <- "2020-07-01"
@@ -94,6 +96,7 @@ for (k in 1:length(statevec)) {
   current_wave <- mydf$covid[wave_starts[length(wave_starts)]:length(mydf$covid)]
 
 
+
   mydf_oos <- mydf %>%
     tail(1) %>%
     slice(rep(1, forecast_days)) %>%
@@ -141,7 +144,6 @@ dfall <- dflist_as_df %>%
 myfun <- function(x, pop) x / pop * 1e5
 myfun2 <- function(x, pop) x / pop * 1e5
 
-library(geofacet)
 # Number of admissions
 covid_hosps <- dfall %>%
   filter(date >= "2022-01-01") %>%
@@ -174,7 +176,6 @@ ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width
 df_to_submit <- data.frame(matrix(NA,ncol=7,nrow=0))
 colnames(df_to_submit) <- c("target","location","forecast_date","target_end_date","quantile","value","type")
 
-state_to_submit <- names(mymat_list)
 
 for (k in 1:length(statevec)){
   # extract this states df

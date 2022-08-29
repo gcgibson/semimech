@@ -57,7 +57,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
     phi1 ~ dbeta(1,100)
     phi2 ~ dbeta(1,100)
 
-    r <- 10
+    r ~ dexp(1./10)
 
   }
 
