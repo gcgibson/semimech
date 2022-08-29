@@ -9,7 +9,7 @@ library(MASS)
 library(dplyr)
 library(rstanarm)
 #options(mc.cores = parallel::detectCores())
-last_date <- as.Date("2022-08-21")
+last_date <- as.Date("2022-08-28")
 # For better plotting
 mytext <- element_text(angle=90, hjust=0.5, vjust=0.5)
 # mytext <- element_text(angle=45, hjust=0.5, vjust=0.5)
@@ -76,7 +76,7 @@ for (k in 1:length(statevec)) {
   wave_matrix <-matrix(NA,nrow=length(wave_starts)-1,ncol=1000)
 
   for (wave_start in 2:length(wave_starts)){
-    to_replace <- tx_hosps[wave_starts[wave_start-1]:wave_starts[wave_start]]
+    to_replace <- mydf$covid[wave_starts[wave_start-1]:wave_starts[wave_start]]
     while (length(to_replace) < 1000){
       to_replace <- c(to_replace,NA)
     }
@@ -176,11 +176,10 @@ colnames(df_to_submit) <- c("target","location","forecast_date","target_end_date
 
 state_to_submit <- names(mymat_list)
 
-for (state in state_to_submit){
+for (k in 1:length(statevec)){
   # extract this states df
-  state_forecast_df <- mymat_list[[state]]
+  state_forecast_df <- dflist[[k]]
 
-  state_forecast_df <- state_forecast_df[1:8000,2:31]
 
   # define quantiles to populate
   quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
@@ -196,7 +195,7 @@ for (state in state_to_submit){
                          quantile = rep(quantiles,each=30))
 
   # assign correct state
-  state_df$state <- state
+  state_df$state <- statevec[k]
 
   # modify week ahead to correct formatting
   state_df$target <- unlist(lapply(state_df$h , function(x){
@@ -213,7 +212,7 @@ for (state in state_to_submit){
   }))
 
   # assign the correct state
-  state_df$location <- state
+  state_df$location <- statevec[k]
 
   # add type column
   state_df$type <- "quantile"
@@ -258,7 +257,7 @@ df_to_submit <- df_to_submit %>% left_join(fips,by="location")
 df_to_submit$location <- df_to_submit$fips
 df_to_submit <- df_to_submit %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
 df_to_submit[is.na(df_to_submit$location),]$location <- "US"
-write.csv(df_to_submit,file = paste0("forecasts_processed/",last_date + 1,"-UT-Osiris.csv"),row.names = F)
+write.csv(df_to_submit,file = paste0(last_date + 1,"-UT-Osiris.csv"),row.names = F)
 
 
 
