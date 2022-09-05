@@ -8,7 +8,7 @@ library(dplyr)
 library(rstanarm)
 
 
-last_date <- as.Date("2022-08-28")
+last_date <- as.Date("2022-09-04")
 # For better plotting
 mytext <- element_text(angle=90, hjust=0.5, vjust=0.5)
 # mytext <- element_text(angle=45, hjust=0.5, vjust=0.5)
