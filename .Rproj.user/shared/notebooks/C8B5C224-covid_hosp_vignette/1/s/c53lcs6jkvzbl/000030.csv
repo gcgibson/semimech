@@ -1,4 +1,0 @@
-"0",""
-"0","tx_hosps <- hhs[hhs$state == ""TX"",]$total_adult_patients_hospitalized_confirmed_covid"
-"0","smoothed_deriv <- c(0,diff(lowess(tx_hosps/max(tx_hosps,na.rm=T),f=.1)$y))"
-"0","plot(tx_hosps/max(tx_hosps,na.rm=T),type='l',ylim=c(-1,1))"
