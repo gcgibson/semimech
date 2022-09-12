@@ -58,18 +58,22 @@ for (k in 1:length(statevec)) {
     # mutate(flu = flu + 1) %>%
     filter(date >= start_date) %>%
     filter(state == statevec[k]) %>%
+    filter(date < last_date) %>%
     mutate(covid = ifelse(is.na(covid), 0, covid)) %>%
     mutate(time = as.numeric(date - min(date)))
 
-  smoothed_deriv <- c(0,diff(lowess(mydf$covid/max(mydf$covid,na.rm=T),f=.1)$y))
+  plot(mydf$covid,type='l')
+  smoothed_deriv <- c(0,diff(lowess(mydf$covid/max(mydf$covid,na.rm=T),f=.15)$y))
 
-
+  plot(smoothed_deriv,type='l')
+  abline(h=0)
   wave_starts <- c()
 
   for (t in 2:length(smoothed_deriv)){
     if (!is.na(smoothed_deriv[t-1]) & !is.na(smoothed_deriv[t])){
       if (smoothed_deriv[t-1] < 0 & smoothed_deriv[t] >0){
         wave_starts <-c(wave_starts,t)
+        abline(v=t)
       }
     }
   }
@@ -92,8 +96,8 @@ for (k in 1:length(statevec)) {
   wave_matrix <- wave_matrix[,1:longest_wave_length]
 
 
-  current_wave <- mydf$covid[wave_starts[length(wave_starts)]:length(mydf$covid)]
 
+  current_wave <- mydf$covid[wave_starts[length(wave_starts)]:length(mydf$covid)]
 
 
   mydf_oos <- mydf %>%
@@ -106,13 +110,50 @@ for (k in 1:length(statevec)) {
                  mydf_oos %>% mutate(period="forecast"))
 
 
+  while(length(current_wave) < dim(wave_matrix)[2]){
+    current_wave <- c(current_wave,NA)
+  }
 
+  wave_matrix <- rbind(wave_matrix,matrix(current_wave,nrow=1))
   forecast <- run_semi_mech(season_past_matrix_hosp = wave_matrix,season_current_hosp =current_wave )
 
+  plot(colMeans(forecast[[1]]))
+
+
+  plot(1:length(current_wave),current_wave,type='l',xlim=c(0,length(current_wave)+30))
+  #spaghetti <- ggplot(data=data.frame(x=1:length(current_wave),y=current_wave)) + geom_line(aes(x=x,y=y,col="mean"))
+  library(RColorBrewer)
+  n <- 60
+  qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+  col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+
+
+  col_vals = forecast[[3]][1:10]*10e2
+  o_cols = order( col_vals)
+  colors_for_plot <-heat.colors(100)[round( col_vals )]
+
+  for (row in 1:1000){
+    tmp_row <- forecast[[1]][row,]
+    lines(seq(1,length(current_wave)+30),tmp_row,col='red')#,col=colors_for_plot[row])
+  }
+  legend(x = 10,y=60,forecast[[3]][o_cols]*1e2,bty="n", col=colors_for_plot[o_cols],pch=1,cex=.3)
+
+  plot(forecast[[3]],current_wave-forecast[[1]][,100],type='p')
+  plot(forecast[[3]],forecast[[1]][,30])
+  cor_res <- c()
+
+  for (j in 1:ncol(forecast[[1]])){
+    cor_test <- cor.test(forecast[[3]],forecast[[1]][,j])
+    cor_res <- c(cor_res,cor_test$estimate)
+  }
+
+  plot(cor_res,type='l')
+  lines(colMeans(forecast[[1]]))
+  #spaghetti
   ### also not really neccessary
 
 
-  dflist[[k]] <- forecast
+  dflist[[k]] <- forecast[[1]]
 
 }
 
@@ -122,7 +163,7 @@ lower_q <- function(x){quantile(x,probs=c(.025))}
 dflist_as_df <- list()
 
 for (k in 1:length(statevec)) {
-  forecast_dates <- seq(as.Date(tail(hhs$date,1)),as.Date(tail(hhs$date,1))+29,by="day")
+  forecast_dates <- seq(as.Date(tail(mydf$date,1)),as.Date(tail(mydf$date,1))+29,by="day")
   forecast_df <- data.frame(date=forecast_dates,pred=colMeans(dflist[[k]]),
                             upper_95 = apply(dflist[[k]],2,upper_q),
                             lower_95 = apply(dflist[[k]],2,lower_q),state=statevec[k])
@@ -154,7 +195,7 @@ covid_hosps <- dfall %>%
   # geom_line(aes(date, covid_av7, lty="covid")) +
   #geom_line(aes(date, flu_av7_center), lty="dashed") +
   geom_line(aes(date, pred)) +
-  geom_point(data=hhs_sub %>%  filter(date >= "2022-01-01"),aes(date, covid), alpha=0.25) +
+  geom_point(data=hhs_sub[hhs_sub$state == "NY",] %>%  filter(date >= "2022-01-01"),aes(date, covid), alpha=0.25) +
   facet_wrap(~state,scales="free")  +
   # scale_y_log10() +
   byy1() +
@@ -164,101 +205,28 @@ covid_hosps <- dfall %>%
   theme(panel.background = element_rect(fill='white', colour='white'),
         plot.background =element_rect(fill='white', colour='white') )
 
+wave_cutoff_dates <- mydf$date[wave_starts]
+
 ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width = 16)
 
 
+wave_plot_df <- data.frame(val = c(t(wave_matrix)),t =rep(1:ncol(wave_matrix),nrow(wave_matrix)),
+                           id = rep(1:nrow(wave_matrix),each=ncol(wave_matrix)))
+p1 <- ggplot(wave_plot_df,aes(x=t,y=val,group=id,col=as.factor(id))) + geom_line(alpha=.5) + geom_line( data=data.frame(x=1:length(current_wave),y=current_wave,id=4),aes(x=x,y=y,group=as.factor(id),col=as.factor(id))) +
+  geom_line(data=data.frame(y=colMeans(forecast[[1]]),id="Forecast"),aes(x=1:(length(colMeans(forecast[[1]]))),y=y,group=as.factor(id)))
 
+p1 + theme_bw()
+phi_post <- forecast[[2]]
 
-#####
+p2 <-ggplot(data=data.frame(x=forecast[[2]][,1])) + geom_density(aes(x=x,fill=as.factor(1))) +
+  geom_density(data=data.frame(x=forecast[[2]][,2]),aes(x=x,fill=as.factor(2))) +
+  geom_density(data=data.frame(x=forecast[[2]][,3]),aes(x=x,fill=as.factor(3))) +
 
+  geom_density(data=data.frame(x=forecast[[3]]),aes(x=x,fill=as.factor(4)) )
 
-df_to_submit <- data.frame(matrix(NA,ncol=7,nrow=0))
-colnames(df_to_submit) <- c("target","location","forecast_date","target_end_date","quantile","value","type")
+print (colMeans(forecast[[3]]))
 
+library(cowplot)
 
-for (k in 1:length(statevec)){
-  # extract this states df
-  state_forecast_df <- dflist[[k]]
-
-
-  # define quantiles to populate
-  quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-
-  # extract quantiles
-  state_forecast_df_daily <- apply(state_forecast_df,2,function(x){
-    return (quantile(x,probs=quantiles))
-  })
-
-  # make dataframe for this state with correct dimensions, number of quantiles (23)
-  # by number of days ahead (1-30)
-  state_df <- data.frame(h=rep(1:30,23),value =c(t(state_forecast_df_daily)),
-                         quantile = rep(quantiles,each=30))
-
-  # assign correct state
-  state_df$state <- statevec[k]
-
-  # modify week ahead to correct formatting
-  state_df$target <- unlist(lapply(state_df$h , function(x){
-    return (paste0(x, " day ahead inc hosp"))
-  }))
-
-  # assign correct forecast date (latest Monday)
-
-  state_df$forecast_date <- last_date + 1
-
-  # assign corresponding next saturday modulo week ahea as the target date
-  state_df$target_end_date <- Reduce(c,lapply(state_df$h , function(x){
-    return (last_date + x + 1)
-  }))
-
-  # assign the correct state
-  state_df$location <- statevec[k]
-
-  # add type column
-  state_df$type <- "quantile"
-  # select only columns to be submitted
-  state_df <- state_df %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
-
-
-
-  df_to_submit <- rbind(df_to_submit,state_df)
-}
-
-
-##
-library(lubridate)
-hhs_sub <- hhs %>%
-  dplyr::select(state, date, fips:covid_per_cap_av7) %>%
-  filter(!is.na(flu) | !is.na(covid))
-
-df_to_submit$date <- df_to_submit$target_end_date
-hhs_sub$location <- hhs_sub$state
-df_to_submit$covid <- df_to_submit$value
-hhs_sub <- rbind(hhs_sub %>% dplyr::select(location,date,covid),df_to_submit[df_to_submit$quantile == .5,] %>% dplyr::select(location,date,covid))
-
-forecasts <- ggplot(hhs_sub[as.Date(hhs_sub$date) > start_date,],aes(x=as.Date(date),y=covid)) + geom_line()# + facet_wrap(~location,scales='free')
-forecasts <- forecasts + facet_wrap(~location,scales='free')
-forecasts <- forecasts + geom_point(data=df_to_submit[df_to_submit$quantile == .5,],aes(x=date,y=covid),col='red',size=.2)
-ggsave(forecasts + theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) ,filename = "covid_forecasts.png",device = "png",height = 10,width = 12)
-
-
-
-##finally add to fips
-df_to_submit <- df_to_submit %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
-
-fips <- read_csv("data/fips-codes.csv")
-colnames(fips) <- c("fips", "state_full", "state", "alphacount")
-glimpse(fips)
-
-fips <- fips %>%
-  mutate(fips = str_pad(fips, 2, pad = "0"))
-fips$location <- fips$state
-df_to_submit <- df_to_submit %>% left_join(fips,by="location")
-df_to_submit$location <- df_to_submit$fips
-df_to_submit <- df_to_submit %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
-df_to_submit[is.na(df_to_submit$location),]$location <- "US"
-write.csv(df_to_submit,file = paste0("forecasts_processed/",last_date + 1,"-UT-Osiris.csv"),row.names = F)
-
-
-
+cowplot::plot_grid(p1 + theme_bw() + ylab("Hosp") +xlab("Wave Time"),p2+ theme_bw() + xlab("Theta"),nrow=2)
 

@@ -101,3 +101,4 @@ run_semi_mech <- function(season_past_hosp,season_current_hosp){
   plot(colMeans(model_run$BUGSoutput$sims.list$season_current_spline[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)]))
   return(model_run$BUGSoutput$sims.list$season_current_spline[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)])
 }
+
