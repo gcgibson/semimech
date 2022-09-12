@@ -24,7 +24,7 @@ args = commandArgs(trailingOnly=TRUE)
 forecast_date <- "2022-01-01"#args[1]
 cases <- covidcast_signal(
   data_source = "hhs",
-  signal = "confirmed_admissions_covid_1d_prop",
+  signal = "confirmed_admissions_covid_1d",
   time_type = "day",
   geo_type = "state",as_of = as.Date(forecast_date) )
 
@@ -42,7 +42,7 @@ for (geo_val in states){
 
   print (geo_val)
   mydfcovid <- cases[cases$geo_value ==geo_val ,]$value
-  smoothed_deriv <- c(0,diff(lowess(mydfcovid/max(mydfcovid,na.rm=T),f=.2)$y))
+  smoothed_deriv <- c(0,diff(lowess(mydfcovid/max(mydfcovid,na.rm=T),f=.1)$y))
   plot(smoothed_deriv,type='l')
 
   abline(h=0)
@@ -94,7 +94,6 @@ for (geo_val in states){
 
 
 
-  wave_matrix <- rbind(wave_matrix,matrix(current_wave,nrow=1))
   wave_matrix_total <- rbind(wave_matrix_total,wave_matrix)
   current_waves <- rbind(current_waves,current_wave)
 
@@ -140,18 +139,88 @@ for (geo_val in states){
 
 
 
-plot(NA,xlim=c(0,200),ylim=c(0,20))
-for (row in seq(1,nrow(wave_matrix_total),4)){
+plot(NA,xlim=c(0,200),ylim=c(0,2500))
+for (row in seq(1,nrow(wave_matrix_total))){
   lines(wave_matrix_total[row,])
 }
 
 
-index_of_maxes <- c()
-maxes <- c()
-for (row in 1:nrow(wave_matrix_total)){
-  index_of_maxes <- c(index_of_maxes,which.max(wave_matrix_total[row,]))
-  maxes <- c(maxes,max(wave_matrix_total[row,],na.rm=T))
+lines(current_wave,col='red')
+
+
+wave_matrix_total <- wave_matrix_total[2:nrow(wave_matrix_total),]
+fit_res <- list()
+for (geo_val in states){
+
+  print (geo_val)
+  mydfcovid <- cases[cases$geo_value ==geo_val ,]$value
+  smoothed_deriv <- c(0,diff(lowess(mydfcovid/max(mydfcovid,na.rm=T),f=.1)$y))
+  plot(smoothed_deriv,type='l')
+
+  abline(h=0)
+  wave_starts <- c()
+
+  for (t in 2:length(smoothed_deriv)){
+    if (!is.na(smoothed_deriv[t-1]) & !is.na(smoothed_deriv[t])){
+      if (smoothed_deriv[t-1] < 0 & smoothed_deriv[t] >0){
+        wave_starts <-c(wave_starts,t)
+        abline(v=t)
+      }
+    }
+  }
+
+  wave_matrix <-matrix(NA,nrow=length(wave_starts)-1,ncol=1000)
+
+  if (length(wave_starts) > 1){
+    for (wave_start in 2:length(wave_starts)){
+      to_replace <- mydfcovid[wave_starts[wave_start-1]:wave_starts[wave_start]]
+      while (length(to_replace) < 1000){
+        to_replace <- c(to_replace,NA)
+      }
+      wave_matrix[wave_start-1,] <- to_replace
+    }
+
+
+    NAindex <-function(z){ min(which(is.na(z)))}
+
+
+    current_wave <- round(mydfcovid[wave_starts[length(wave_starts)]:length(mydfcovid)])
+    if (is.null(dim(wave_matrix))){
+      wave_matrix <- matrix(wave_matrix,nrow=1)
+    }
+    longest_wave_length <- max(length(current_wave),max(apply(wave_matrix,1,NAindex))) + 30
+
+    wave_matrix <- matrix(round(wave_matrix[,1:longest_wave_length]),nrow=nrow(wave_matrix))
+  }
+
+
+  length_of_current_wave <- length(current_wave)
+  current_wave[tail(1:length(current_wave),3)] <- NA
+
+
+
+
+  model_data <- list(T = length(current_wave),
+                     wave_matrix_total=tmp,
+                     n_row = nrow(tmp),
+                     tmp_oos=tmp_oos,
+                    y_c = current_wave,
+                     y = current_wave)
+
+
+  distances <- c()
+  for (row_idx in 1:nrow(model_data$tmp_oos)){
+    distances <- c(distances,mean((model_data$y - model_data$tmp_oos[row_idx,1:model_data$T])^2,na.rm=T))
+  }
+  min_dist <- which.min(distances)
+  plot(model_data$tmp_oos[min_dist,1:model_data$T],type='l',ylim=c(0,2000))
+  lines(current_wave,col='red')
+
+  fit_res[[geo_val]] <- forecast[[1]][,1:((length_of_current_wave + 30))]# model_run$BUGSoutput$sims.list$spline_forecast
 }
+
+
+
 
 
 
