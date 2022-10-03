@@ -57,7 +57,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
     phi1 ~ dbeta(1,100)
     phi2 ~ dbeta(1,100)
 
-    r ~ dexp(1./10)
+    r <- 10000
 
   }
 
@@ -88,7 +88,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
                       basis_oos=season_current_basis_oos)
 
   # Choose the parameters to watch
-  model_parameters <- c("season_current_spline","spline_forecast_current")
+  model_parameters <- c("season_current_spline","spline_forecast_current","phi2")
 
   # Run the model
   model_run <- jags(
@@ -100,6 +100,8 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
     n.burnin = 200, # Number of iterations to remove at start
     n.thin = 2
   ) # Amo
-
-  return(model_run$BUGSoutput$sims.list$season_current_spline[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)])
+  hist(model_run$BUGSoutput$sims.list$phi2)
+  plot(colMeans(model_run$BUGSoutput$sims.list$spline_forecast_current[,1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2]]),type='l')
+  lines(season_current_hosp,col='red')
+  return(model_run$BUGSoutput$sims.list$spline_forecast_current[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)])
 }
