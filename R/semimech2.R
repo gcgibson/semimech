@@ -18,7 +18,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
      ## Spline model for current wave
      season_current_spline[1] <- exp(inprod(season_current_basis[1,], beta_w2[1:N_knots_season_current_basis]))
      for (i in 2:T_latest){
-          season_current_hosp[i] ~ dnorm(season_current_spline[i],1/(season_current_spline[i]))
+          season_current_hosp[i] ~ dnorm(season_current_spline[i],1/(season_current_spline[i] +.00000001))
          spline_forecast_current[i] ~ dnegbin(p_current[i],r)
           p_current[i] <- r/(r+season_current_spline[i])
          season_current_spline[i] <- exp(inprod(season_current_basis[i,], beta_w2[1:N_knots_season_current_basis]) - phi2*sum(season_current_spline[1:(i-1)]))
@@ -31,7 +31,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
        ## Spline model for previous wave
        season_previous_spline[1,j] <- exp(inprod(season_past_basis[1,], beta_w1[1:N_knots_season_past_basis,j]))
        for (i in 2:T_previous){
-            season_past_hosp[j,i] ~ dnorm(season_previous_spline[i,j],1/(season_previous_spline[i,j]))
+            season_past_hosp[j,i] ~ dnorm(season_previous_spline[i,j],1/(season_previous_spline[i,j] +.000000001))
            spline_forecast[j,i] ~ dnegbin(p_past[i,j],r)
             p_past[i,j] <- r/(r+season_previous_spline[i,j])
            season_previous_spline[i,j] <- exp(inprod(season_past_basis[i,], beta_w1[1:N_knots_season_past_basis,j]) - phi1*sum(season_previous_spline[1:(i-1),j]))
