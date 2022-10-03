@@ -101,7 +101,7 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
     n.thin = 2
   ) # Amo
   hist(model_run$BUGSoutput$sims.list$phi2)
-  plot(colMeans(model_run$BUGSoutput$sims.list$spline_forecast_current[,1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2]]),type='l')
+  plot(colMeans(model_run$BUGSoutput$sims.list$spline_forecast_current[,1:dim(model_run$BUGSoutput$sims.list$spline_forecast_current)[2]]),type='l')
   lines(season_current_hosp,col='red')
-  return(model_run$BUGSoutput$sims.list$spline_forecast_current[,tail(1:dim(model_run$BUGSoutput$sims.list$season_current_spline)[2],30)])
+  return(model_run$BUGSoutput$sims.list$spline_forecast_current[,tail(1:dim(model_run$BUGSoutput$sims.list$spline_forecast_current)[2],30)])
 }
