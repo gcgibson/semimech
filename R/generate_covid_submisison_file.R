@@ -165,14 +165,14 @@ covid_hosps <- dfall %>%
   #us_state_grid2 is a different arrangement with Alaska on top, can omit
   # original line of casey's, but scale free means we lose the plot so I'm using 2nd line
   #geofacet::facet_geo(~state,grid= "us_state_grid2", scales="free") +
-  geofacet::facet_geo(~state,grid="us_state_grid2") +
+  #geofacet::facet_geo(~state,grid="us_state_grid2") +
   theme(panel.background = element_rect(fill='white', colour='white'),
         plot.background =element_rect(fill='white', colour='white') )
 
-  #ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width = 16)
+  ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width = 16)
 
 # For geofacet plot
-ggsave(filename = "covid_hosps_USShape.png",covid_hosps,device = "png",height = 10,width = 16)
+#ggsave(filename = "covid_hosps_USShape.png",covid_hosps,device = "png",height = 10,width = 16)
 
 
 
