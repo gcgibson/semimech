@@ -70,7 +70,8 @@ run_semi_mech <- function(season_past_matrix_hosp,season_current_hosp){
 
 
   ## create current season basis
-  season_current_basis <- ns(1:length(season_current_hosp),knots=seq(1,length(season_current_hosp)-14,by=14))
+  #season_current_basis <- ns(1:length(season_current_hosp),knots=seq(1,length(season_current_hosp)-14,by=14))
+  season_current_basis <- ns(1:length(season_current_hosp),knots=seq(1,max(1,length(season_current_hosp)-14), by= 14) )
 
   ## get out of sample basis for 30 days ahead
   season_current_basis_oos <- splines:::predict.ns(season_current_basis,newx=seq(length(season_current_hosp),length(season_current_hosp)+30))
