@@ -6,9 +6,10 @@ library(splines)
 library(MASS)
 library(dplyr)
 library(rstanarm)
+#library(geofacet)
+#library(ggplot2)
 
-
-last_date <- as.Date("2022-09-04")
+last_date <- as.Date("2022-10-23")
 # For better plotting
 mytext <- element_text(angle=90, hjust=0.5, vjust=0.5)
 # mytext <- element_text(angle=45, hjust=0.5, vjust=0.5)
@@ -33,14 +34,8 @@ hhs_sub <- hhs_sub %>% dplyr::select(state,date,covid)
 hhs_sub_us <- hhs_sub %>% dplyr::group_by(date) %>% dplyr::summarise(state="US",covid = sum(covid))
 hhs_sub <- rbind(hhs_sub,hhs_sub_us)
 
-### Set OR 2022-08-26 to 52
-hhs_sub[hhs_sub$state == "OR" & hhs_sub$date == "2022-08-24", ]$covid <- 38
-hhs_sub[hhs_sub$state == "OR" & hhs_sub$date == "2022-08-25", ]$covid <- 40
-hhs_sub[hhs_sub$state == "OR" & hhs_sub$date >= "2022-08-26", ]$covid <- 42
-
 forecast_days <- 31
 start_date <- "2020-07-01"
-
 
 
 statevec <- hhs_sub$state %>% unique() %>% sort()
@@ -48,8 +43,9 @@ statevec <- hhs_sub$state %>% unique() %>% sort()
 dflist <- vector("list", length=length(statevec))
 
 
-
 for (k in 1:length(statevec)) {
+#for (k in 30:length(statevec)) {
+#for (k in 1:10) {
 
   cat(sprintf("Building model for %s (state %i out of %i)...\n",
               statevec[k], k, length(statevec)))
@@ -89,7 +85,8 @@ for (k in 1:length(statevec)) {
 
   longest_wave_length <- max(apply(wave_matrix,1,NAindex))
 
-  wave_matrix <- wave_matrix[,1:longest_wave_length]
+  wave_matrix <- wave_matrix[,1:longest_wave_length, drop=F]
+  #wave_matrix <- wave_matrix[,1:longest_wave_length]
 
 
   current_wave <- mydf$covid[wave_starts[length(wave_starts)]:length(mydf$covid)]
@@ -115,6 +112,7 @@ for (k in 1:length(statevec)) {
   dflist[[k]] <- forecast
 
 }
+#end of K loop
 
 upper_q <- function(x){quantile(x,probs=c(.975))}
 lower_q <- function(x){quantile(x,probs=c(.025))}
@@ -122,6 +120,8 @@ lower_q <- function(x){quantile(x,probs=c(.025))}
 dflist_as_df <- list()
 
 for (k in 1:length(statevec)) {
+#for (k in 30:length(statevec)) {
+#for (k in 1:10) {
   forecast_dates <- seq(as.Date(tail(hhs$date,1)),as.Date(tail(hhs$date,1))+29,by="day")
   forecast_df <- data.frame(date=forecast_dates,pred=colMeans(dflist[[k]]),
                             upper_95 = apply(dflist[[k]],2,upper_q),
@@ -130,7 +130,7 @@ for (k in 1:length(statevec)) {
 
   dflist_as_df[[k]] <- forecast_df
 }
-
+# end of k loop
 
 dfall <- dflist_as_df %>%
   plyr::rbind.fill() %>%
@@ -154,18 +154,25 @@ covid_hosps <- dfall %>%
   # geom_line(aes(date, covid_av7, lty="covid")) +
   #geom_line(aes(date, flu_av7_center), lty="dashed") +
   geom_line(aes(date, pred)) +
+
   geom_point(data=hhs_sub %>%  filter(date >= "2022-01-01"),aes(date, covid), alpha=0.25) +
   facet_wrap(~state,scales="free")  +
-  # scale_y_log10() +
+  #scale_y_log10() +
   byy1() +
   scale_x_date(date_labels = "%b '%y") +
   labs(x="", y="covid admissions") + scale_x_date(date_breaks = '1 month', date_labels = '%b') +
- # geofacet::facet_geo(~state,scales='free') +
+
+  #us_state_grid2 is a different arrangement with Alaska on top, can omit
+  # original line of casey's, but scale free means we lose the plot so I'm using 2nd line
+  #geofacet::facet_geo(~state,grid= "us_state_grid2", scales="free") +
+  geofacet::facet_geo(~state,grid="us_state_grid2") +
   theme(panel.background = element_rect(fill='white', colour='white'),
         plot.background =element_rect(fill='white', colour='white') )
 
-ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width = 16)
+  #ggsave(filename = "covid_hosps.png",covid_hosps,device = "png",height = 10,width = 16)
 
+# For geofacet plot
+ggsave(filename = "covid_hosps_USShape.png",covid_hosps,device = "png",height = 10,width = 16)
 
 
 
@@ -177,6 +184,8 @@ colnames(df_to_submit) <- c("target","location","forecast_date","target_end_date
 
 
 for (k in 1:length(statevec)){
+#for (k in 30:length(statevec)){
+#for (k in 1:10){
   # extract this states df
   state_forecast_df <- dflist[[k]]
 
@@ -223,7 +232,7 @@ for (k in 1:length(statevec)){
 
   df_to_submit <- rbind(df_to_submit,state_df)
 }
-
+# end of k loop
 
 ##
 library(lubridate)
@@ -257,7 +266,7 @@ df_to_submit <- df_to_submit %>% left_join(fips,by="location")
 df_to_submit$location <- df_to_submit$fips
 df_to_submit <- df_to_submit %>% dplyr::select(target,location,forecast_date,target_end_date,quantile,value,type)
 df_to_submit[is.na(df_to_submit$location),]$location <- "US"
-write.csv(df_to_submit,file = paste0("forecasts_processed/",last_date + 1,"-UT-Osiris.csv"),row.names = F)
+#write.csv(df_to_submit,file = paste0("forecasts_processed/",last_date + 1,"-UT-Osiris.csv"),row.names = F)
 
 
 
